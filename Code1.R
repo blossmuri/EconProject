@@ -1,17 +1,16 @@
 ### 載入套件
-install.packages("readxl")
-library(readxl)
 
 ### 定義變數
-PMI <- read_xlsx("data/PMI.xlsx")
-SPX <- read_xlsx("data/SPX.xlsx")
+PMI <- read.csv("data/PMI.csv")
+SPX <- read.csv("data/SPX.csv")
 
 PMIseries <- as.vector(PMI$percentChange)
 SPXseries <- as.vector(SPX$percentChange)
 
+
 # 將兩個序列標準化
-PMI_normalized <- scale(PMIseries)
-SPX_normalized <- scale(SPXseries)
+PMI_normalized <- c(scale(PMIseries))
+SPX_normalized <- c(scale(SPXseries))
 
 # 計算交叉相關值
 ccf_result <- ccf(PMI_normalized, SPX_normalized, lag.max = 150,plot=TRUE)
