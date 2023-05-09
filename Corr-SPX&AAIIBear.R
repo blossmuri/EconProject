@@ -1,19 +1,21 @@
 ### 載入套件
+install.packages("ggplot2")
+library(ggplot2)
 
 ### 定義變數
-PMI <- read.csv("data/PMI.csv")
+Bear <- read.csv("data/AAIIBear.csv")
 SPX <- read.csv("data/SPX.csv")
 
-PMIseries <- as.vector(PMI$percentChange)
-SPXseries <- as.vector(SPX$percentChange)
-
+Bearseries <- as.vector(Bear$PercentChange[1:120])
+SPXseries <- as.vector(SPX$PercentChange[1:120])
 
 # 將兩個序列標準化
-PMI_normalized <- c(scale(PMIseries))
+Bear_normalized <- c(scale(Bearseries))
 SPX_normalized <- c(scale(SPXseries))
 
 # 計算交叉相關值
-ccf_result <- ccf(PMI_normalized, SPX_normalized, lag.max = 150,plot=TRUE)
+ccf_result <- ccf(Bear_normalized, SPX_normalized, lag.max = 12, plot=TRUE)
+print(ccf_result)
 
 # 找到最大的交叉相關值及其對應的延遲時間
 max_corr <- max(ccf_result$acf)
