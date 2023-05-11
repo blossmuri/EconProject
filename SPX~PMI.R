@@ -6,12 +6,10 @@ library(lmtest) ; library(dplyr) ; library(ggplot2)
 PMI <- read.csv("data/PMI.csv")
 SPX <- read.csv("data/SPX.csv")
 
-SPX <- ts(SPXseries, start = c(2013, 3), frequency = 12)
-PMI <- ts(PMIseries, start = c(2013, 3), frequency = 12)
-plot(SPX, main = "SPX and PMI Series", xlab = "Time", ylab = "Value")
-lines(PMI, col = "blue")
-
-
+SPXplot <- ts(SPX$PercentChange[1:120], start = c(2013, 3), frequency = 12)
+PMIplot <- ts(PMI$PercentChange[1:120], start = c(2013, 3), frequency = 12)
+plot(SPXplot, main = "SPX and PMI Series", xlab = "Time", ylab = "Value")
+lines(PMIplot, col = "blue")
 
 M <- matrix(nrow = 5, ncol = 4)
 colnames(M) <- c("5y", "10y", "20y", "30y")
