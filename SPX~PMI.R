@@ -13,7 +13,7 @@ lines(PMIplot, col = "blue")
 
 M <- matrix(nrow = 5, ncol = 4)
 colnames(M) <- c("5y", "10y", "20y", "30y")
-rownames(M) <- c("ccf.lag", "max.corr", "OLS.B","R-squared","Granger.p")
+rownames(M) <- c("ccf.lag-year", "ccf.max-corr", "OLS.B1","OLS.R-squared","Granger.p-value")
 
 
 
