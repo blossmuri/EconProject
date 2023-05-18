@@ -1,162 +1,154 @@
 # 嘗試分別在2018-2023年,2013-2018年,2008-2013年,2003-2008,1998-2003年的情況，
 # 利用ccf & granger's causality test，找出PMI是SPX多少個月的領先指標 
 
-install.packages("dplyr") ; install.packages("lmtest") ; install.packages("vars")
-library(lmtest) ; library(dplyr) ; library(ggplot2) ; library(vars)
+install.packages("dplyr") ; install.packages("lmtest") ; install.packages("vars") ; install.packages("readxl")
+library(lmtest) ; library(dplyr) ; library(ggplot2) ; library(vars) ; library(readxl)
 
 PMI <- read.csv("data/PMI.csv")
 SPX <- read.csv("data/SPX.csv")
 options(digits = 4)
+Table <- list()
 
-############################ 
+############################ Each 5-years
 
-M <- matrix(nrow = 5, ncol = 5)
-colnames(M) <- c("2018-2023", "2013-2018", "2008-2013", "2003-2008","1998-2003")
-rownames(M) <- c("ccf.lag-month", "ccf.max-corr", "OLS.B1","OLS.R-squared","Granger.p-value")
 
-b = 1 
+for (i in c(1,2,3,4,5)){  j <- paste((2023-5*i),"~",(2023-5*(i-1)))
 
-for (i in c(1,2,3,4,5)){ a = 1 
-
-SPXplot <- ts(rev(SPX$MoM[(1 + 60*(i - 1)) : (60*i)]), start = c((2023-5*i), 3), frequency = 12)
-PMIplot <- ts(rev(PMI$MoM[(1 + 60*(i - 1)) : (60*i)]), start = c((2023-5*i), 3), frequency = 12)
-
-plot(SPXplot, main = "SPX and PMI Series", ylim= c(-20, 25), xlab = "Time", ylab = "% Change") ; lines(PMIplot, col = "blue")
-
-plot(SPX$YoY[(1 + 60*(i - 1)) : (60*i)],PMI$YoY[(1 + 60*(i - 1)) : (60*i)],
-     xlab = "SPX", ylab = "PMI", main = paste((2023-5*i),"~", (2023-5*(i-1) )))
-
-# test 1. Cross-Correlation 分析
-PMIseries <- as.vector(as.numeric(PMI$MoM[(1 + 60*(i - 1)) : (60*i)]))
-SPXseries <- as.vector(as.numeric(SPX$MoM[(1 + 60*(i - 1)) : (60*i)]))
-
-ccf_result <- ccf(PMIseries, SPXseries, lag.max = 6, plot = FALSE)
-
-max_corr <- max(ccf_result$acf)
-lag_index <- which(ccf_result$acf == max_corr)
-lag_time <- as.numeric(ccf_result$lag[lag_index])
-
-M[a,b] = lag_time
-a = a + 1
-M[a,b] = max_corr 
-a = a + 1
-
-# test 2. lm(SPX ~ PMI)的迴歸係數
-if (lag_time >= 0) {
-  PMIseries <- as.vector(as.numeric(PMI$MoM[ (1 + 60*(i - 1) + lag_time) : (60*i + lag_time  )]))
-  SPXseries <- as.vector(as.numeric(SPX$MoM[(1 + 60*(i - 1)) : (60*i)]))
-  OLS <- summary(lm(SPXseries ~ PMIseries))
-}
-
-else{
-  OLS$coefficients[2] = 0
-  OLS$adj.r.squared = 0
-}
-
-M[a,b] = OLS$coefficients[2]
-a = a + 1
-M[a,b] = OLS$adj.r.squared
-a = a + 1
-
-# test 3. Granger's causality
-if (lag_time >= 0) {
+  Table[[j]] <- list() 
   
-  data <- cbind(SPXseries, PMIseries) # 假設有兩個時間序列
-  var_result <- VAR(data, p = 10, type = "const")  # 指定最大滯後期數為 10
+  for (l in 1:3){
+    Table[[j]][l] <- list()
+  }
   
-  # 自動選擇滯後期數
-  select_result <- VARselect(data, lag.max = 10, type = "const")
+  SPXplot <- ts(rev(SPX$YoY[(1 + 60*(i - 1)) : (60*i)]), start = c((2023-5*i), 3), frequency = 12)
+  PMIplot <- ts(rev(PMI$YoY[(1 + 60*(i - 1)) : (60*i)]), start = c((2023-5*i), 3), frequency = 12)
   
-  G <- grangertest(PMIseries ~ SPXseries, order = select_result$selection[1])
+  plot(SPXplot, main = "SPX and PMI Series", ylim= c(-45, 60), xlab = "Time", ylab = "% Change") ; lines(PMIplot, col = "blue")
+  
+  plot(SPX$YoY[(1 + 60*(i - 1)) : (60*i)],PMI$YoY[(1 + 60*(i - 1)) : (60*i)],
+       xlab = "SPX", ylab = "PMI", main = paste((2023-5*i),"~", (2023-5*(i-1) )))
+  
+
+  # test 1. Cross-Correlation analysis
+  
+  PMIseries <- as.vector(as.numeric(PMI$YoY[(1 + 60*(i - 1)) : (60*i)]))
+  SPXseries <- as.vector(as.numeric(SPX$YoY[(1 + 60*(i - 1)) : (60*i)]))
+  
+  ccf_result <- ccf(PMIseries, SPXseries, lag.max = 6, plot = FALSE)
+  
+  max_corr <- max(ccf_result$acf)   
+  lag_index <- which(ccf_result$acf == max_corr)  
+  lag_time <- as.numeric(ccf_result$lag[lag_index])   
+  
+  Table[[j]][1] <- list(c(max_corr,lag_time))
+  
+  
+  # test 2. Granger's causality test
+  
+  if (lag_time >= 0) {
+    
+    dat <- data.frame(Y = SPXseries, X = PMIseries)
+
+    G <- list(grangertest( Y ~ X , order = (lag_time + 1) , data = dat))
+    
+  } else {
+  
+    G = "NA"
+    
+  }
+  
+  Table[[j]][2] <- G
+  
+  
+  # test 3. OLS model
+  
+  if (lag_time >= 0) {
+    
+    
+    Y = SPXseries <- as.vector(as.numeric(SPX$YoY[(1 + 60*(i - 1)) : (60*i)]))
+    
+    X <- matrix(0 , nrow = 60, ncol = (lag_time + 1) )
+    
+    for (k in 1:60) {
+      
+      PMIsubset <- as.vector(as.numeric(PMI$YoY[( 60*(i - 1) + k) : (60*(i-1) + k + (lag_time))]))
+      X[k, ] <-  PMIsubset
+      
+    }
+    
+    OLS <- lm( Y ~ X)
+   
+  } else {
+  
+    OLS <- "NA"
+    
+  }
+  
+  Table[[j]][3] <- list(summary(OLS))
+  
 }
 
-else{
-  G$Pr[2] = 0
+############################ ALL YEARS
+
+
+PMIseries <- as.vector(as.numeric(PMI$YoY[1:300]))
+SPXseries <- as.vector(as.numeric(SPX$YoY[1:300]))
+j <- paste(1998,"~",2023)
+Table[[j]] <- list() 
+for (l in 1:3){
+  Table[[j]][l] <- list()
 }
 
-M[a,b] = G$Pr[2]
-b = b + 1
+#Test 1.
 
-}
-
-
-##########################
-
-
-N <- matrix(nrow = 5, ncol = 5)
-colnames(N) <- c("2018-2023", "2013-2023", "2008-2023", "2003-2023","1998-2023")
-rownames(N) <- c("ccf.lag-month", "ccf.max-corr", "OLS.B1","OLS.R-squared","Granger.p-value")
-
-b = 1
-
-for (i in c(60,120,180,240,300)){ a = 1 
-
-# test 1. Cross-Correlation 分析
-PMIseries <- as.vector(as.numeric(PMI$MoM[1:i]))
-SPXseries <- as.vector(as.numeric(SPX$MoM[1:i]))
 ccf_result <- ccf( PMIseries,  SPXseries, lag.max = 6 , plot = FALSE)
 
 max_corr <- max(ccf_result$acf)
 lag_index <- which(ccf_result$acf == max_corr)
 lag_time <- as.numeric(ccf_result$lag[lag_index])
 
-N[a,b] = lag_time
-a = a + 1
-N[a,b] = max_corr
-a = a + 1
+Table[[j]][1] <- list(c(max_corr,lag_time))
 
-# test 2. lm(SPX~PMI)的迴歸係數
+# Test 2.
 
 if(lag_time >= 0){
   
-  L = 1 + lag_time ; U = i + lag_time 
-  PMIseries <- as.vector(as.numeric(PMI$MoM[ L : U ])) 
-  SPXseries <- as.vector(as.numeric(SPX$MoM[ 1 : i ]))
-  OLS <- summary(lm(SPXseries ~ PMIseries)) 
+  dat <- data.frame(Y = SPXseries, X = PMIseries)
+  
+  G <- list(grangertest( Y ~ X , order = (lag_time + 1) , data = dat))
+  
+  
+} else {
+
+  G = "NA"
   
 }
 
-else{
-  
-  OLS$coefficients[2] = 0 ; OLS$adj.r.squared = 0
-  
-}
+Table[[6]][2] = G
 
-N[a,b] = OLS$coefficients[2]
-a = a + 1 
-N[a,b] = OLS$adj.r.squared
-a = a + 1
-
-# test 3. Granger's causality
+# test 3.
 
 if(lag_time >= 0){
   
-  data <- cbind(SPXseries, PMIseries) # 假設有兩個時間序列
-  var_result <- VAR(data, p = 10, type = "const")  # 指定最大滯後期數為 10
+  L = 1 + lag_time ; U = 300 + lag_time 
+  X <- as.vector(as.numeric(PMI$YoY[ L : U ])) 
+  Y <- as.vector(as.numeric(SPX$YoY[ 1 : 300]))
+  OLS <- lm(Y ~ X) 
   
-  # 自動選擇滯後期數
-  select_result <- VARselect(data, lag.max = 10, type = "const")
-  
-  G <- grangertest(PMIseries ~ SPXseries, order = select_result$selection[1])
-  
-}
+} else{
 
-else{
-  
-  G$Pr[2] = 0
+  OLS = "NA"
   
 }
 
-N[a,b] = G$Pr[2]
-b = b + 1
+Table[[6]][3] = list(summary(OLS))
 
-}
 
-##################
+############################ Result
 
-SPXplot <- ts(rev(SPX$MoM[1:300]), start = c(1998, 3), frequency = 12)
-PMIplot <- ts(rev(PMI$MoM[1:300]), start = c(1998, 3), frequency = 12)
-plot(SPXplot, main = "SPX and PMI Series",ylim= c(-20, 25), xlab = "Time", ylab = "Value") ; lines(PMIplot, col = "blue")
 
-M ; N
+Table
+SPXplot <- ts(rev(SPX$YoY[1:300]), start = c(1998, 3), frequency = 12)
+PMIplot <- ts(rev(PMI$YoY[1:300]), start = c(1998, 3), frequency = 12)
+plot(SPXplot, main = "SPX and PMI Series",ylim= c(-45, 60), xlab = "Time", ylab = "Value") ; lines(PMIplot, col = "blue")
 
