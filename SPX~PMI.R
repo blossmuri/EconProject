@@ -1,22 +1,22 @@
-# 嘗試分別在2018-2023年,2013-2018年,2008-2013年,2003-2008,1998-2003年的情況，
-# 利用ccf & granger's causality test，找出PMI是SPX多少個月的領先指標 
+# 以每五年為一個跨度，from 1983 - 2003
+# 嘗試利用ccf & granger's causality test，判斷PMI作為SPX領先指標是否有統計上顯著性 
 
 install.packages("dplyr") ; install.packages("lmtest") ; install.packages("vars") ; install.packages("readxl")
 library(lmtest) ; library(dplyr) ; library(ggplot2) ; library(vars) ; library(readxl)
 
 PMI <- read.csv("data/PMI.csv")
-SPX <- read.csv("data/SPX.csv")
-options(digits = 4)
+SPX <- read_excel("data/SPX.xlsx")
+options(digits = 5)
 Table <- list()
 
 ############################ Each 5-years
 
 
-for (i in c(1,2,3,4,5)){  j <- paste((2023-5*i),"~",(2023-5*(i-1)))
+for (i in c(1,2,3,4,5,6,7,8)){  j <- paste((2023-5*i),"~",(2023-5*(i-1)))
 
   Table[[j]] <- list() 
   
-  for (l in 1:3){
+  for (l in 1:4){
     Table[[j]][l] <- list()
   }
   
@@ -45,19 +45,51 @@ for (i in c(1,2,3,4,5)){  j <- paste((2023-5*i),"~",(2023-5*(i-1)))
   
   # test 2. Granger's causality test
   
-  if (lag_time >= 0) {
+  if (lag_time > 0) {
     
-    dat <- data.frame(Y = SPXseries, X = PMIseries)
+     PMIseries <- as.vector(as.numeric(PMI$YoY[(1 + 60*(i - 1)) : (60*i)]))
+     SPXseries <- as.vector(as.numeric(SPX$YoY[(2 + 60*(i - 1)) : (60*i+1)]))
+    
+     dat <- data.frame(Y = SPXseries , X = PMIseries)
 
-    G <- list(grangertest( Y ~ X , order = (lag_time + 1) , data = dat))
-    
-  } else {
+     G1 <- list(grangertest( Y ~ X , order = (lag_time+1) , data = dat))
+     G2 <- "Not applicable"
   
-    G = "NA"
     
+  } else if (lag_time == 0){ 
+    
+     PMIseries <- as.vector(as.numeric(PMI$YoY[(1 + 60*(i - 1)) : (60*i)]))
+     SPXseries <- as.vector(as.numeric(SPX$YoY[(2 + 60*(i - 1)) : (60*i+1)]))
+  
+     dat <- data.frame(Y = SPXseries , X = PMIseries)
+    
+     G1 <- list(grangertest( Y ~ X , order = (lag_time+1)  , data = dat))
+     
+     
+     PMIseries <- as.vector(as.numeric(PMI$YoY[(1 + 60*(i - 1)) : (60*i)]))
+     SPXseries <- as.vector(as.numeric(SPX$YoY[(1 + 60*(i - 1)) : (60*i)]))
+     
+     dat <- data.frame(Y = PMIseries , X = SPXseries)
+     
+     G2 <- list(grangertest( Y ~ X , order = (lag_time+1)  , data = dat))
+     
+  
+  } else { 
+    
+    PMIseries <- as.vector(as.numeric(PMI$YoY[(1 + 60*(i - 1)) : (60*i)]))
+    SPXseries <- as.vector(as.numeric(SPX$YoY[(1 + 60*(i - 1)) : (60*i)]))
+    
+    dat <- data.frame(Y = PMIseries , X = SPXseries)
+    
+    G1 <- "Not applicable"
+    
+    G2 <- list(grangertest( Y ~ X , order = (abs(lag_time)+1)  , data = dat))
+     
+     
   }
   
-  Table[[j]][2] <- G
+  Table[[j]][2] <- G1
+  Table[[j]][3] <- G2
   
   
   # test 3. OLS model
@@ -65,7 +97,7 @@ for (i in c(1,2,3,4,5)){  j <- paste((2023-5*i),"~",(2023-5*(i-1)))
   if (lag_time >= 0) {
     
     
-    Y = SPXseries <- as.vector(as.numeric(SPX$YoY[(1 + 60*(i - 1)) : (60*i)]))
+    Y = as.vector(as.numeric(SPX$YoY[(1 + 60*(i - 1)) : (60*i)]))
     
     X <- matrix(0 , nrow = 60, ncol = (lag_time + 1) )
     
@@ -80,22 +112,25 @@ for (i in c(1,2,3,4,5)){  j <- paste((2023-5*i),"~",(2023-5*(i-1)))
    
   } else {
   
-    OLS <- "NA"
+    OLS <- "Not applicable"
     
   }
   
-  Table[[j]][3] <- list(summary(OLS))
+  Table[[j]][4] <- list(summary(OLS))
   
 }
 
 ############################ ALL YEARS
 
 
-PMIseries <- as.vector(as.numeric(PMI$YoY[1:300]))
-SPXseries <- as.vector(as.numeric(SPX$YoY[1:300]))
-j <- paste(1998,"~",2023)
+PMIseries <- as.vector(as.numeric(PMI$YoY[1:480]))
+SPXseries <- as.vector(as.numeric(SPX$YoY[1:480]))
+
+j <- paste(1983,"~",2023)
+
 Table[[j]] <- list() 
-for (l in 1:3){
+
+for (l in 1:4){
   Table[[j]][l] <- list()
 }
 
@@ -113,42 +148,85 @@ Table[[j]][1] <- list(c(max_corr,lag_time))
 
 if(lag_time >= 0){
   
+  
+  PMIseries <- as.vector(as.numeric(PMI$YoY[1:480]))
+  SPXseries <- as.vector(as.numeric(SPX$YoY[2:481]))
+  
   dat <- data.frame(Y = SPXseries, X = PMIseries)
   
-  G <- list(grangertest( Y ~ X , order = (lag_time + 1) , data = dat))
+  G1 <- list(grangertest( Y ~ X , order = (lag_time + 1) , data = dat))
+  G2 <- "Not applicable"
   
+  
+} else if (lag_time == 0){ 
+  
+  PMIseries <- as.vector(as.numeric(PMI$YoY[1:480]))
+  SPXseries <- as.vector(as.numeric(SPX$YoY[2:481]))
+  
+  dat <- data.frame(Y = SPXseries , X = PMIseries)
+  
+  G1 <- list(grangertest( Y ~ X , order = (lag_time+1)  , data = dat))
+  
+  
+  PMIseries <- as.vector(as.numeric(PMI$YoY[1:480]))
+  SPXseries <- as.vector(as.numeric(SPX$YoY[1:480]))
+  
+  dat <- data.frame(Y = PMIseries , X = SPXseries)
+  
+  G2 <- list(grangertest( Y ~ X , order = (lag_time+1)  , data = dat))
+  
+  
+} else { 
+  
+  PMIseries <- as.vector(as.numeric(PMI$YoY[1:480]))
+  SPXseries <- as.vector(as.numeric(SPX$YoY[1:480]))
+  
+  dat <- data.frame(Y = PMIseries , X = SPXseries)
+  
+  G1 <- "Not applicable"
+  
+  G2 <- list(grangertest( Y ~ X , order = (abs(lag_time)+1)  , data = dat))
+  
+  
+}
+
+Table[[j]][2] <- G1
+Table[[j]][3] <- G2
+
+
+# test 3. OLS model
+
+if (lag_time >= 0) {
+  
+  
+  Y = as.vector(as.numeric(SPX$YoY[1:480]))
+  
+  X <- matrix(0 , nrow = 480 , ncol = (lag_time + 1) )
+  
+  for (k in 1:480) {
+    
+    PMIsubset <- as.vector(as.numeric(PMI$YoY[k : k + (lag_time)]))
+    X[k, ] <-  PMIsubset
+    
+  }
+  
+  OLS <- lm( Y ~ X)
   
 } else {
-
-  G = "NA"
+  
+  OLS <- "Not applicable"
   
 }
 
-Table[[6]][2] = G
+Table[[j]][4] <- list(summary(OLS))
 
-# test 3.
-
-if(lag_time >= 0){
-  
-  L = 1 + lag_time ; U = 300 + lag_time 
-  X <- as.vector(as.numeric(PMI$YoY[ L : U ])) 
-  Y <- as.vector(as.numeric(SPX$YoY[ 1 : 300]))
-  OLS <- lm(Y ~ X) 
-  
-} else{
-
-  OLS = "NA"
-  
-}
-
-Table[[6]][3] = list(summary(OLS))
 
 
 ############################ Result
 
 
 Table
-SPXplot <- ts(rev(SPX$YoY[1:300]), start = c(1998, 3), frequency = 12)
-PMIplot <- ts(rev(PMI$YoY[1:300]), start = c(1998, 3), frequency = 12)
+SPXplot <- ts(rev(SPX$YoY[1:480]), start = c(1983, 4), frequency = 12)
+PMIplot <- ts(rev(PMI$YoY[1:480]), start = c(1983, 4), frequency = 12)
 plot(SPXplot, main = "SPX and PMI Series",ylim= c(-45, 60), xlab = "Time", ylab = "Value") ; lines(PMIplot, col = "blue")
 
