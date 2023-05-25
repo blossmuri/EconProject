@@ -1,6 +1,9 @@
 # 以每五年為一個跨度，from 1983 - 2003
 # 嘗試利用ccf & granger's causality test，判斷PMI作為SPX領先指標是否有統計上顯著性 
 
+#我把滯後期數改成用ccf得出的lag_time
+#原本用var.select得出來的感覺像是optimized的結果，雖然會有不錯的p value，但看經濟上的解釋沒有道理。因此granger test 跟 OLS  都改用ccf的lag_time來回歸。
+
 install.packages("dplyr") ; install.packages("lmtest") ; install.packages("vars") ; install.packages("readxl")
 library(lmtest) ; library(dplyr) ; library(ggplot2) ; library(vars) ; library(readxl)
 
